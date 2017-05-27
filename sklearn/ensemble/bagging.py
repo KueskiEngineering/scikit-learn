@@ -62,7 +62,8 @@ def _generate_bagging_indices(random_state, bootstrap_features,
 
 
 def _parallel_build_estimators(n_estimators, ensemble, X, y, sample_weight,
-                               seeds, total_n_estimators, verbose):
+                               seeds, total_n_estimators, verbose,
+                               updater=None, early_stopping_rounds=None):
     """Private function used to build a batch of estimators within a job."""
     # Retrieve settings
     n_samples, n_features = X.shape
@@ -78,6 +79,13 @@ def _parallel_build_estimators(n_estimators, ensemble, X, y, sample_weight,
     # Build estimators
     estimators = []
     estimators_features = []
+
+    # fit parameters
+    fit_parameters = {}
+    if updater is not None:
+        fit_parameters['updater'] = updater
+    if early_stopping_rounds is not None:
+        fit_parameters['early_stopping_rounds'] = early_stopping_rounds
 
     for i in range(n_estimators):
         if verbose > 1:
@@ -109,11 +117,16 @@ def _parallel_build_estimators(n_estimators, ensemble, X, y, sample_weight,
                 not_indices_mask = ~indices_to_mask(indices, n_samples)
                 curr_sample_weight[not_indices_mask] = 0
 
-            estimator.fit(X[:, features], y, sample_weight=curr_sample_weight)
+            estimator.fit(X[:, features],
+                          y,
+                          sample_weight=curr_sample_weight,
+                          **fit_parameters)
 
         # Draw samples, using a mask, and then fit
         else:
-            estimator.fit((X[indices])[:, features], y[indices])
+            estimator.fit((X[indices])[:, features],
+                          y[indices],
+                          **fit_parameters)
 
         estimators.append(estimator)
         estimators_features.append(features)
@@ -204,6 +217,8 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
                  oob_score=False,
                  warm_start=False,
                  n_jobs=1,
+                 updater=None,
+                 early_stopping_rounds=None,
                  random_state=None,
                  verbose=0):
         super(BaseBagging, self).__init__(
@@ -217,6 +232,8 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
         self.oob_score = oob_score
         self.warm_start = warm_start
         self.n_jobs = n_jobs
+        self.updater = updater
+        self.early_stopping_rounds = early_stopping_rounds
         self.random_state = random_state
         self.verbose = verbose
 
@@ -371,7 +388,9 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
                 sample_weight,
                 seeds[starts[i]:starts[i + 1]],
                 total_n_estimators,
-                verbose=self.verbose)
+                verbose=self.verbose,
+                updater=self.updater,
+                early_stopping_rounds=self.early_stopping_rounds)
             for i in range(n_jobs))
 
         # Reduce
@@ -554,6 +573,8 @@ class BaggingClassifier(BaseBagging, ClassifierMixin):
                  oob_score=False,
                  warm_start=False,
                  n_jobs=1,
+                 updater=None,
+                 early_stopping_rounds=None,
                  random_state=None,
                  verbose=0):
 
@@ -567,6 +588,8 @@ class BaggingClassifier(BaseBagging, ClassifierMixin):
             oob_score=oob_score,
             warm_start=warm_start,
             n_jobs=n_jobs,
+            updater=updater,
+            early_stopping_rounds=early_stopping_rounds,
             random_state=random_state,
             verbose=verbose)
 
