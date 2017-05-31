@@ -63,7 +63,8 @@ def _generate_bagging_indices(random_state, bootstrap_features,
 
 def _parallel_build_estimators(n_estimators, ensemble, X, y, sample_weight,
                                seeds, total_n_estimators, verbose,
-                               updater=None, early_stopping_rounds=None):
+                               updater=None, early_stopping_rounds=None,
+                               eval_set=None, eval_metric=None):
     """Private function used to build a batch of estimators within a job."""
     # Retrieve settings
     n_samples, n_features = X.shape
@@ -86,6 +87,10 @@ def _parallel_build_estimators(n_estimators, ensemble, X, y, sample_weight,
         fit_parameters['updater'] = updater
     if early_stopping_rounds is not None:
         fit_parameters['early_stopping_rounds'] = early_stopping_rounds
+    if eval_set is not None:
+        fit_parameters['eval_set'] = eval_set
+    if eval_metric is not None:
+        fit_parameters['eval_metric'] = eval_metric
 
     for i in range(n_estimators):
         if verbose > 1:
@@ -219,6 +224,8 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
                  n_jobs=1,
                  updater=None,
                  early_stopping_rounds=None,
+                 eval_set=None,
+                 eval_metric=None,
                  random_state=None,
                  verbose=0):
         super(BaseBagging, self).__init__(
@@ -234,6 +241,8 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
         self.n_jobs = n_jobs
         self.updater = updater
         self.early_stopping_rounds = early_stopping_rounds
+        self.eval_set = eval_set
+        self.eval_metric = eval_metric
         self.random_state = random_state
         self.verbose = verbose
 
@@ -390,7 +399,9 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
                 total_n_estimators,
                 verbose=self.verbose,
                 updater=self.updater,
-                early_stopping_rounds=self.early_stopping_rounds)
+                early_stopping_rounds=self.early_stopping_rounds,
+                eval_set=self.eval_set,
+                eval_metric=self.eval_metric)
             for i in range(n_jobs))
 
         # Reduce
@@ -575,6 +586,8 @@ class BaggingClassifier(BaseBagging, ClassifierMixin):
                  n_jobs=1,
                  updater=None,
                  early_stopping_rounds=None,
+                 eval_set=None,
+                 eval_metric=None,
                  random_state=None,
                  verbose=0):
 
@@ -590,6 +603,8 @@ class BaggingClassifier(BaseBagging, ClassifierMixin):
             n_jobs=n_jobs,
             updater=updater,
             early_stopping_rounds=early_stopping_rounds,
+            eval_set=eval_set,
+            eval_metric=eval_metric,
             random_state=random_state,
             verbose=verbose)
 
