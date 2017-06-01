@@ -64,7 +64,7 @@ def _generate_bagging_indices(random_state, bootstrap_features,
 def _parallel_build_estimators(n_estimators, ensemble, X, y, sample_weight,
                                seeds, total_n_estimators, verbose,
                                updater=None, early_stopping_rounds=None,
-                               eval_set=None, eval_metric=None):
+                               evals=None, eval_metric=None):
     """Private function used to build a batch of estimators within a job."""
     # Retrieve settings
     n_samples, n_features = X.shape
@@ -87,8 +87,8 @@ def _parallel_build_estimators(n_estimators, ensemble, X, y, sample_weight,
         fit_parameters['updater'] = updater
     if early_stopping_rounds is not None:
         fit_parameters['early_stopping_rounds'] = early_stopping_rounds
-    if eval_set is not None:
-        fit_parameters['eval_set'] = eval_set
+    if evals is not None:
+        fit_parameters['eval_set'] = evals
     if eval_metric is not None:
         fit_parameters['eval_metric'] = eval_metric
 
@@ -224,7 +224,7 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
                  n_jobs=1,
                  updater=None,
                  early_stopping_rounds=None,
-                 eval_set=None,
+                 evals=None,
                  eval_metric=None,
                  random_state=None,
                  verbose=0):
@@ -241,7 +241,7 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
         self.n_jobs = n_jobs
         self.updater = updater
         self.early_stopping_rounds = early_stopping_rounds
-        self.eval_set = eval_set
+        self.evals = evals
         self.eval_metric = eval_metric
         self.random_state = random_state
         self.verbose = verbose
@@ -307,6 +307,15 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
 
         # Convert data
         X, y = check_X_y(X, y, ['csr', 'csc'])
+        if self.evals:
+            evals_checked = []
+            for d in self.evals:
+                evals_checked_X, evals_checked_y = check_X_y(d[0],
+                                                             d[1],
+                                                             ['csr', 'csc'])
+                evals_checked.append(tuple((evals_checked_X, evals_checked_y)))
+            self.evals = evals_checked
+
         if sample_weight is not None:
             sample_weight = check_array(sample_weight, ensure_2d=False)
             check_consistent_length(y, sample_weight)
@@ -400,7 +409,7 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
                 verbose=self.verbose,
                 updater=self.updater,
                 early_stopping_rounds=self.early_stopping_rounds,
-                eval_set=self.eval_set,
+                evals=self.evals,
                 eval_metric=self.eval_metric)
             for i in range(n_jobs))
 
@@ -586,7 +595,7 @@ class BaggingClassifier(BaseBagging, ClassifierMixin):
                  n_jobs=1,
                  updater=None,
                  early_stopping_rounds=None,
-                 eval_set=None,
+                 evals=None,
                  eval_metric=None,
                  random_state=None,
                  verbose=0):
@@ -603,7 +612,7 @@ class BaggingClassifier(BaseBagging, ClassifierMixin):
             n_jobs=n_jobs,
             updater=updater,
             early_stopping_rounds=early_stopping_rounds,
-            eval_set=eval_set,
+            evals=evals,
             eval_metric=eval_metric,
             random_state=random_state,
             verbose=verbose)
