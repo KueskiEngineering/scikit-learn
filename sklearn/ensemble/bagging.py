@@ -63,7 +63,9 @@ def _generate_bagging_indices(random_state, bootstrap_features,
 
 def _parallel_build_estimators(n_estimators, ensemble, X, y, sample_weight,
                                seeds, total_n_estimators, verbose,
-                               updater=None, early_stopping_rounds=None,
+                               updater=None,
+                               tree_method=None,
+                               early_stopping_rounds=None,
                                evals=None, eval_metric=None,
                                learning_rates=None):
     """Private function used to build a batch of estimators within a job."""
@@ -86,6 +88,8 @@ def _parallel_build_estimators(n_estimators, ensemble, X, y, sample_weight,
     fit_parameters = {}
     if updater is not None:
         fit_parameters['updater'] = updater
+    if tree_method is not None:
+        fit_parameters['tree_method'] = tree_method
     if learning_rates is not None:
         fit_parameters['learning_rates'] = learning_rates
     if early_stopping_rounds is not None:
@@ -226,6 +230,7 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
                  warm_start=False,
                  n_jobs=1,
                  updater=None,
+                 tree_method=None,
                  learning_rates=None,
                  early_stopping_rounds=None,
                  evals=None,
@@ -244,6 +249,7 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
         self.warm_start = warm_start
         self.n_jobs = n_jobs
         self.updater = updater
+        self.tree_method = tree_method
         self.learning_rates = learning_rates
         self.early_stopping_rounds = early_stopping_rounds
         self.evals = evals
@@ -413,6 +419,7 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
                 total_n_estimators,
                 verbose=self.verbose,
                 updater=self.updater,
+                tree_method=self.tree_method,
                 learning_rates=self.learning_rates,
                 early_stopping_rounds=self.early_stopping_rounds,
                 evals=self.evals,
@@ -600,6 +607,7 @@ class BaggingClassifier(BaseBagging, ClassifierMixin):
                  warm_start=False,
                  n_jobs=1,
                  updater=None,
+                 tree_method=None,
                  learning_rates=None,
                  early_stopping_rounds=None,
                  evals=None,
@@ -618,6 +626,7 @@ class BaggingClassifier(BaseBagging, ClassifierMixin):
             warm_start=warm_start,
             n_jobs=n_jobs,
             updater=updater,
+            tree_method=tree_method,
             learning_rates=learning_rates,
             early_stopping_rounds=early_stopping_rounds,
             evals=evals,
