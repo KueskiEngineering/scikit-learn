@@ -62,12 +62,7 @@ def _generate_bagging_indices(random_state, bootstrap_features,
 
 
 def _parallel_build_estimators(n_estimators, ensemble, X, y, sample_weight,
-                               seeds, total_n_estimators, verbose,
-                               updater=None,
-                               tree_method=None,
-                               early_stopping_rounds=None,
-                               evals=None, eval_metric=None,
-                               learning_rates=None):
+                               seeds, total_n_estimators, verbose, fit_parameters=None):
     """Private function used to build a batch of estimators within a job."""
     # Retrieve settings
     n_samples, n_features = X.shape
@@ -79,25 +74,12 @@ def _parallel_build_estimators(n_estimators, ensemble, X, y, sample_weight,
                                               "sample_weight")
     if not support_sample_weight and sample_weight is not None:
         raise ValueError("The base estimator doesn't support sample weight")
+    if fit_parameters is None:
+        fit_parameters = {}
 
     # Build estimators
     estimators = []
     estimators_features = []
-
-    # fit parameters
-    fit_parameters = {}
-    if updater is not None:
-        fit_parameters['updater'] = updater
-    if tree_method is not None:
-        fit_parameters['tree_method'] = tree_method
-    if learning_rates is not None:
-        fit_parameters['learning_rates'] = learning_rates
-    if early_stopping_rounds is not None:
-        fit_parameters['early_stopping_rounds'] = early_stopping_rounds
-    if evals is not None:
-        fit_parameters['eval_set'] = evals
-    if eval_metric is not None:
-        fit_parameters['eval_metric'] = eval_metric
 
     for i in range(n_estimators):
         if verbose > 1:
@@ -229,14 +211,9 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
                  oob_score=False,
                  warm_start=False,
                  n_jobs=1,
-                 updater=None,
-                 tree_method=None,
-                 learning_rates=None,
-                 early_stopping_rounds=None,
-                 evals=None,
-                 eval_metric=None,
                  random_state=None,
-                 verbose=0):
+                 verbose=0,
+                 fit_parameters=None):
         super(BaseBagging, self).__init__(
             base_estimator=base_estimator,
             n_estimators=n_estimators)
@@ -248,12 +225,7 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
         self.oob_score = oob_score
         self.warm_start = warm_start
         self.n_jobs = n_jobs
-        self.updater = updater
-        self.tree_method = tree_method
-        self.learning_rates = learning_rates
-        self.early_stopping_rounds = early_stopping_rounds
-        self.evals = evals
-        self.eval_metric = eval_metric
+        self.fit_parameters = fit_parameters
         self.random_state = random_state
         self.verbose = verbose
 
@@ -318,14 +290,15 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
 
         # Convert data
         X, y = check_X_y(X, y, ['csr', 'csc'])
-        if self.evals:
-            evals_checked = []
-            for d in self.evals:
-                evals_checked_X, evals_checked_y = check_X_y(d[0],
-                                                             d[1],
-                                                             ['csr', 'csc'])
-                evals_checked.append(tuple((evals_checked_X, evals_checked_y)))
-            self.evals = evals_checked
+        if self.fit_parameters is not None:
+            if 'eval_set'in self.fit_parameters.keys():
+                evals_checked = []
+                for d in self.fit_parameters['eval_set']:
+                    evals_checked_X, evals_checked_y = check_X_y(d[0],
+                                                                 d[1],
+                                                                 ['csr', 'csc'])
+                    evals_checked.append(tuple((evals_checked_X, evals_checked_y)))
+                self.fit_parameters['eval_set'] = evals_checked
 
         if sample_weight is not None:
             sample_weight = check_array(sample_weight, ensure_2d=False)
@@ -417,13 +390,8 @@ class BaseBagging(with_metaclass(ABCMeta, BaseEnsemble)):
                 sample_weight,
                 seeds[starts[i]:starts[i + 1]],
                 total_n_estimators,
-                verbose=self.verbose,
-                updater=self.updater,
-                tree_method=self.tree_method,
-                learning_rates=self.learning_rates,
-                early_stopping_rounds=self.early_stopping_rounds,
-                evals=self.evals,
-                eval_metric=self.eval_metric)
+                self.verbose,
+                fit_parameters=self.fit_parameters)
             for i in range(n_jobs))
 
         # Reduce
@@ -550,6 +518,9 @@ class BaggingClassifier(BaseBagging, ClassifierMixin):
     verbose : int, optional (default=0)
         Controls the verbosity of the building process.
 
+    fit_parameters : dict or None, optional (default=None)
+        fit parameters common to all estimators in the ensemble
+
     Attributes
     ----------
     base_estimator_ : estimator
@@ -606,14 +577,9 @@ class BaggingClassifier(BaseBagging, ClassifierMixin):
                  oob_score=False,
                  warm_start=False,
                  n_jobs=1,
-                 updater=None,
-                 tree_method=None,
-                 learning_rates=None,
-                 early_stopping_rounds=None,
-                 evals=None,
-                 eval_metric=None,
                  random_state=None,
-                 verbose=0):
+                 verbose=0,
+                 fit_parameters=None):
 
         super(BaggingClassifier, self).__init__(
             base_estimator,
@@ -625,14 +591,9 @@ class BaggingClassifier(BaseBagging, ClassifierMixin):
             oob_score=oob_score,
             warm_start=warm_start,
             n_jobs=n_jobs,
-            updater=updater,
-            tree_method=tree_method,
-            learning_rates=learning_rates,
-            early_stopping_rounds=early_stopping_rounds,
-            evals=evals,
-            eval_metric=eval_metric,
             random_state=random_state,
-            verbose=verbose)
+            verbose=verbose,
+            fit_parameters=fit_parameters)
 
     def _validate_estimator(self):
         """Check the estimator and set the base_estimator_ attribute."""
