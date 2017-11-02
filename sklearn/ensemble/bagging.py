@@ -128,14 +128,14 @@ def _parallel_build_estimators(n_estimators, ensemble, X, y, sample_weight,
     return estimators, estimators_features
 
 
-def _parallel_predict_proba(estimators, estimators_features, X, n_classes):
+def _parallel_predict_proba(estimators, estimators_features, X, n_classes, output_margin=False):
     """Private function used to compute (proba-)predictions within a job."""
     n_samples = X.shape[0]
     proba = np.zeros((n_samples, n_classes))
 
     for estimator, features in zip(estimators, estimators_features):
         if hasattr(estimator, "predict_proba"):
-            proba_estimator = estimator.predict_proba(X[:, features])
+            proba_estimator = estimator.predict_proba(X[:, features], output_margin=output_margin)
 
             if n_classes == len(estimator.classes_):
                 proba += proba_estimator
@@ -668,7 +668,7 @@ class BaggingClassifier(BaseBagging, ClassifierMixin):
         return self.classes_.take((np.argmax(predicted_probabilitiy, axis=1)),
                                   axis=0)
 
-    def predict_proba(self, X):
+    def predict_proba(self, X, output_margin=False):
         """Predict class probabilities for X.
 
         The predicted class probabilities of an input sample is computed as
@@ -709,7 +709,8 @@ class BaggingClassifier(BaseBagging, ClassifierMixin):
                 self.estimators_[starts[i]:starts[i + 1]],
                 self.estimators_features_[starts[i]:starts[i + 1]],
                 X,
-                self.n_classes_)
+                self.n_classes_,
+                output_margin=output_margin)
             for i in range(n_jobs))
 
         # Reduce
