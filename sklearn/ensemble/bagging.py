@@ -889,6 +889,9 @@ class BaggingRegressor(BaseBagging, RegressorMixin):
     verbose : int, optional (default=0)
         Controls the verbosity of the building process.
 
+    fit_parameters : dict or None, optional (default=None)
+        fit parameters common to all estimators in the ensemble
+
     Attributes
     ----------
     estimators_ : list of estimators
@@ -938,7 +941,8 @@ class BaggingRegressor(BaseBagging, RegressorMixin):
                  warm_start=False,
                  n_jobs=1,
                  random_state=None,
-                 verbose=0):
+                 verbose=0,
+                 fit_parameters=None):
         super(BaggingRegressor, self).__init__(
             base_estimator,
             n_estimators=n_estimators,
@@ -950,7 +954,8 @@ class BaggingRegressor(BaseBagging, RegressorMixin):
             warm_start=warm_start,
             n_jobs=n_jobs,
             random_state=random_state,
-            verbose=verbose)
+            verbose=verbose,
+            fit_parameters=fit_parameters)
 
     def predict(self, X):
         """Predict regression target for X.
